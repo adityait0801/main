@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <form onsubmit="saveToLocalStorage(event)">
+        <label>Name</label>
+        <input type="text" id="usernameInputTag" name="username" required/>
+        <label>EmailID</label>
+        <input type="email" id="emailInputTag" name="emailID" required/>
+        <label>Phone Number</label>
+        <input type="tel" id="phonenumberInputTag" name="phonenumber"/>
+        <button type="submit" id="submitButton">Submit</button>
+    </form>
+    <ul id='listofitems'></ul>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.6.2/axios.min.js"></script>
+    <script>
+        let editingUserId = null;
+
+        function saveToLocalStorage(event) {
+            event.preventDefault();
+            const name = event.target.username.value;
+            const email = event.target.emailID.value;
+            const phonenumber = event.target.phonenumber.value;
+            const obj = {
+                name,
+                email,
+                phonenumber
+            };
+
+            if (editingUserId) {
+                // If editing an existing user, update the user
+                obj._id = editingUserId;
+                updateToCRUDAPI(obj);
+            } else {
+                // If creating a new user, save the user
+                showUserOnScreen(obj);
+                saveToCRUDAPI(obj);
+            }
+
+            // Clear the form after submission
+            event.target.reset();
+            // Reset the editing user ID
+            editingUserId = null;
+        }
+
+        function showUserOnScreen(obj) {
+            const parentElem = document.getElementById('listofitems');
+            const childElem = document.createElement('li');
+            childElem.textContent = obj.name + '-' + obj.email + '-' + obj.phonenumber;
+
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.onclick = () => {
+                deleteFromCRUDAPI(obj._id)
+                    .then(() => {
+                        parentElem.removeChild(childElem);
+                    })
+                    .catch(error => {
+                        console.error('Error deleting user:', error);
+                    });
+            };
+
+            const editButton = document.createElement('button');
+            editButton.textContent = 'Edit';
+            editButton.onclick = () => {
+                // Populate the form for editing
+                document.getElementById('usernameInputTag').value = obj.name;
+                document.getElementById('emailInputTag').value = obj.email;
+                document.getElementById('phonenumberInputTag').value = obj.phonenumber;
+                // Set the editing user ID
+                editingUserId = obj._id;
+            };
+
+            childElem.appendChild(deleteButton);
+            childElem.appendChild(editButton);
+
+            parentElem.appendChild(childElem);
+        }
+
+        function saveToCRUDAPI(data) {
+            axios.post("https://crudcrud.com/api/8b3344b6640546da95491d6dcb2c1766/appointmentData", data)
+                .then(response => {
+                    showUserOnScreen(response.data);
+                })
+                .catch(err => {
+                    console.error('Error creating user:', err);
+                });
+        }
+
+        function updateToCRUDAPI(data) {
+            axios.put(`https://crudcrud.com/api/8b3344b6640546da95491d6dcb2c1766/appointmentData/${data._id}`, data)
+                .then(response => {
+                    // Update the user details on the UI
+                    const parentElem = document.getElementById('listofitems');
+                    const childElem = Array.from(parentElem.children).find(child => child.dataset.userId === data._id);
+                    if (childElem) {
+                        childElem.textContent = data.name + '-' + data.email + '-' + data.phonenumber;
+                    }
+                })
+                .catch(err => {
+                    console.error('Error updating user:', err);
+                });
+        }
+
+        function deleteFromCRUDAPI(userId) {
+            return axios.delete(`https://crudcrud.com/api/8b3344b6640546da95491d6dcb2c1766/appointmentData/${userId}`)
+                .then(response => {
+                    return response.data;
+                })
+                .catch(error => {
+                    console.error('Error deleting user:', error);
+                    throw error;
+                });
+        }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            axios.get("https://crudcrud.com/api/8b3344b6640546da95491d6dcb2c1766/appointmentData")
+                .then(response => {
+                    console.log(response);
+                    for (var i = 0; i < response.data.length; i++) {
+                        showUserOnScreen(response.data[i]);
+                    }
+                })
+                .catch(err => {
+                    console.log(err);
+                });
+        });
+    </script>
+</body>
+</html>
+
