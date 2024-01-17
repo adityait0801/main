@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOTEBOOK</title>
+    <style>
+
+        #h1, #totalBookCount, #searchResultCount,#search-box{
+            display: flex;
+            text-align: center;
+            align-items: center;
+            justify-content: center;
+        }
+
+        form {
+            margin-top: 10px;
+        }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
+</head>
+<body>
+    <h1 id="h1">Note Book</h1>
+    <div id="search-box">
+    <input type="text" id="searchInput" placeholder="Search by Note Title">
+    <button type="button" onclick="searchNotes()">Search</button>
+    </div>
+
+    <div id="totalBookCount">No of Books: 0</div>
+    <div id="searchResultCount">Books showing: 0</div>
+
+    <form onsubmit="saveToNotebookAPI(event)">
+        <label>Note Title</label>
+        <input type="text" id="noteTitle" name="noteTitle" placeholder="Enter the Note Title" required>
+        
+        <label>Note Description</label>
+        <textarea id="noteDescription" name="noteDescription" placeholder="Enter the Note Description" required></textarea>
+    
+        <button type="submit" id="save">Add to Book</button>
+    </form>
+
+    <ul id='listofitems'></ul>
+
+    <script>
+        let totalBookCount = 0;
+
+        async function saveToNotebookAPI(event) {
+            event.preventDefault();
+
+            const noteTitle = event.target.noteTitle.value;
+            const noteDescription = event.target.noteDescription.value;
+
+            const note = { title: noteTitle, description: noteDescription };
+
+            try {
+                const response = await axios.post("https://crudcrud.com/api/d278a74825264a6b9685932650878ef6/NoteBook", note);
+                showNoteOnScreen(response.data, response.data._id);
+                updateCounts(++totalBookCount);
+            } catch (error) {
+                console.error('Error creating note:', error);
+            }
+        }
+
+        function updateCounts(count) {
+            const totalBookCountElem = document.getElementById('totalBookCount');
+            totalBookCountElem.textContent = `No of Books: ${count}`;
+            const searchResultCountElem = document.getElementById('searchResultCount');
+            searchResultCountElem.textContent = `Books showing: ${count}`;
+        }
+
+        function showNoteOnScreen(note, noteId) {
+            const parentElem = document.getElementById('listofitems');
+            const childElem = document.createElement('li');
+            childElem.innerHTML = `<strong>${note.title}</strong><br> ${note.description}`;
+
+            const deleteButton = document.createElement('input');
+            deleteButton.type = "button";
+            deleteButton.value = 'Delete';
+            deleteButton.onclick = async () => {
+                try {
+                    await axios.delete(`https://crudcrud.com/api/d278a74825264a6b9685932650878ef6/Notebook/${noteId}`);
+                    parentElem.removeChild(childElem);
+                    updateCounts(--totalBookCount);
+                } catch (error) {
+                    console.error('Error deleting note:', error);
+                }
+            };
+
+            childElem.appendChild(deleteButton);
+            parentElem.appendChild(childElem);
+
+            const searchInput = document.getElementById('searchInput');
+            const searchTerm = searchInput.value.toLowerCase();
+            childElem.style.display = note.title.toLowerCase().includes(searchTerm) ? 'block' : 'none';
+
+            if (!searchTerm) {
+                updateCounts(totalBookCount);
+            }
+        }
+
+        async function searchNotes() {
+            const searchInput = document.getElementById('searchInput');
+            const searchTerm = searchInput.value.toLowerCase();
+
+            try {
+                const response = await axios.get("https://crudcrud.com/api/d278a74825264a6b9685932650878ef6/Notebook");
+                console.log(response);
+                const parentElem = document.getElementById('listofitems');
+
+                parentElem.innerHTML = '';
+                let searchResultCount = 0;
+
+                response.data.forEach(note => {
+                    const childElem = document.createElement('li');
+                    childElem.innerHTML = `<strong>Note Title:</strong> ${note.title}<br><strong>Note Description:</strong> ${note.description}`;
+
+                    const deleteButton = document.createElement('input');
+                    deleteButton.type = "button";
+                    deleteButton.value = 'Delete';
+                    deleteButton.onclick = async () => {
+                        try {
+                            await axios.delete(`https://crudcrud.com/api/d278a74825264a6b9685932650878ef6/Notebook/${note._id}`);
+                            parentElem.removeChild(childElem);
+                            updateCounts(--totalBookCount);
+                            updateCounts(--searchResultCount);
+                        } catch (error) {
+                            console.error('Error deleting note:', error);
+                        }
+                    };
+
+                    childElem.appendChild(deleteButton);
+                    parentElem.appendChild(childElem);
+
+                    childElem.style.display = note.title.toLowerCase().includes(searchTerm) ? 'block' : 'none';
+
+                    if (childElem.style.display === 'block') {
+                        searchResultCount++;
+                    }
+                });
+
+                updateCounts(searchResultCount);
+            } catch (error) {
+                console.log(error);
+            }
+        }
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            try {
+                const response = await axios.get("https://crudcrud.com/api/d278a74825264a6b9685932650878ef6/Notebook");
+                console.log(response);
+                const parentElem = document.getElementById('listofitems');
+                totalBookCount = response.data.length;
+                updateCounts(totalBookCount);
+
+                response.data.forEach(note => {
+                    showNoteOnScreen(note, note._id);
+                });
+            } catch (error) {
+                console.log(error);
+            }
+        });
+    </script>
+</body>
+</html>
